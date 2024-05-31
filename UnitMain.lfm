@@ -1,0 +1,24 @@
+object FormMain: TFormMain
+  Left = 500
+  Height = 568
+  Top = 250
+  Width = 659
+  Caption = 'FormMain'
+  ClientHeight = 568
+  ClientWidth = 659
+  DesignTimePPI = 154
+  object PaintBox: TPaintBox
+    Left = 0
+    Height = 568
+    Top = 0
+    Width = 659
+    Align = alClient
+    OnPaint = PaintBoxPaint
+  end
+  object Timer: TTimer
+    Interval = 50
+    OnTimer = TimerTimer
+    Left = 242
+    Top = 85
+  end
+end
