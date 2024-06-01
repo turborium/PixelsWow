@@ -8,38 +8,41 @@
 
 const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
-const int DEC_V = 6;
 double myTime = 0.0;
-int fr = 0;
-int fullscreen = 0;  // Переключатель режима полноэкранного режима
 
-// Функция для обновления и рисования пикселей
-void draw_pixels(SDL_Renderer *renderer) {
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-    SDL_RenderClear(renderer);
+typedef struct {
+    Uint8 r, g, b;
+} Color;
 
-    fr++;
-    srand(myTime);
+SDL_Texture* texture;
+Uint32* pixelBuffer;
 
+void draw_pixels(SDL_Renderer *renderer, SDL_Window* window, Uint32* pixelBuffer) {
+    memset(pixelBuffer, 0, WINDOW_WIDTH * WINDOW_HEIGHT * sizeof(Uint32));  // Clear buffer
+
+    srand((unsigned int)time(NULL));  // Initialize random seed only once
     for (int i = 0; i < 100; i++) {
-        double x = (double)rand() / RAND_MAX;
-        double y = (double)rand() / RAND_MAX;
-        int new_color = rand() % (0x00FFFFFF + 1);
+        float x = (float)rand() / RAND_MAX;
+        float y = (float)rand() / RAND_MAX;
+        Color newPixel = {(Uint8)(rand() % 256), (Uint8)(rand() % 256), (Uint8)(rand() % 256)};
 
         for (int j = 0; j < 2000; j++) {
-            x = fmod(myTime + x + cos(y * 2.2 + x * 0.1), 1.0);
-            y = fmod(myTime * 0.3 + y + sin(x * 1.5), 1.0);
-
-            SDL_SetRenderDrawColor(renderer,
-                (new_color >> 16) & 0xFF,
-                (new_color >> 8) & 0xFF,
-                new_color & 0xFF,
-                SDL_ALPHA_OPAQUE);
-
-            SDL_RenderDrawPoint(renderer, (int)(x * WINDOW_WIDTH), (int)(y * WINDOW_HEIGHT));
+            x = fmod(myTime + x + cos(y * 2.2f + x * 0.1f), 1.0f);
+            y = fmod(myTime * 0.3f + y + sin(x * 1.5f), 1.0f);
+            int ix = (int)(x * WINDOW_WIDTH);
+            int iy = (int)(y * WINDOW_HEIGHT);
+            if (ix >= 0 && ix < WINDOW_WIDTH && iy >= 0 && iy < WINDOW_HEIGHT) {
+                int index = iy * WINDOW_WIDTH + ix;
+                Uint8 r = fmin(255, pixelBuffer[index] + (newPixel.r / 2));
+                Uint8 g = fmin(255, pixelBuffer[index] + (newPixel.g / 2));
+                Uint8 b = fmin(255, pixelBuffer[index] + newPixel.b);
+                pixelBuffer[index] = SDL_MapRGB(SDL_GetWindowSurface(window)->format, r, g, b);
+            }
         }
     }
 
+    SDL_UpdateTexture(texture, NULL, pixelBuffer, WINDOW_WIDTH * sizeof(Uint32));
+    SDL_RenderCopy(renderer, texture, NULL, NULL);
     SDL_RenderPresent(renderer);
 }
 
@@ -48,18 +51,25 @@ int main(int argc, char *argv[]) {
     SDL_Renderer *renderer;
     SDL_Init(SDL_INIT_VIDEO);
 
-    window = SDL_CreateWindow("SDL Rendering Example",
+    window = SDL_CreateWindow("SDL Particle Simulation",
                               SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                               WINDOW_WIDTH, WINDOW_HEIGHT,
-                              0);
+                              SDL_WINDOW_SHOWN);
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-    // Отслеживание FPS
+    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, WINDOW_WIDTH, WINDOW_HEIGHT);
+    pixelBuffer = (Uint32*)malloc(WINDOW_WIDTH * WINDOW_HEIGHT * sizeof(Uint32));
+    if (pixelBuffer == NULL) {
+        fprintf(stderr, "Failed to allocate memory for pixels\n");
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+
     Uint32 startTicks, frameTicks;
     float fps;
     char windowTitle[100];
-
-    // Основной цикл программы
     int running = 1;
     SDL_Event event;
     while (running) {
@@ -72,19 +82,20 @@ int main(int argc, char *argv[]) {
         }
 
         myTime += 0.0003;
-        draw_pixels(renderer);
+        draw_pixels(renderer, window, pixelBuffer);
 
-        // Расчет и вывод FPS
         frameTicks = SDL_GetTicks() - startTicks;
         if (frameTicks > 0) {
             fps = 1000.0f / frameTicks;
-            snprintf(windowTitle, 100, "FPS: %.2f", fps);
+            snprintf(windowTitle, sizeof(windowTitle), "FPS: %.2f", fps);
             SDL_SetWindowTitle(window, windowTitle);
         }
 
-        //SDL_Delay(16); // Цель ~60 FPS
+        //SDL_Delay(16);  // Aim for roughly 60 FPS
     }
 
+    free(pixelBuffer);
+    SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
