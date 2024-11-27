@@ -8,6 +8,6 @@ JS: https://js.do/code/734894
 Swift: https://pastebin.com/HJsWJnqF
 C++: https://pastebin.com/ukn3GDv6
 
-Powered By Lazarus(ObjectPascal)
+[Powered By Lazarus (ObjectPascal)](https://www.lazarus-ide.org/)
 
 ![wow](wow.png)
